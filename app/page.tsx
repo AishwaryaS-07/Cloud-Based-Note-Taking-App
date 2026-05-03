@@ -7,6 +7,17 @@ import { NoteSidebar } from "@/components/note-sidebar";
 import { createStore } from "@/lib/store";
 import type { AuthUser, Note, StoreAction } from "@/lib/types";
 
+function initials(name: string | undefined | null) {
+  if (!name) return "?";
+  return name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 export default function Page() {
   const [store, setStore] = useState<StoreAction | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -30,7 +41,10 @@ export default function Page() {
     });
   }, [store]);
 
-  const activeNote = useMemo(() => notes.find((note) => note.id === activeId) ?? notes[0] ?? null, [notes, activeId]);
+  const activeNote = useMemo(
+    () => notes.find((note) => note.id === activeId) ?? notes[0] ?? null,
+    [notes, activeId]
+  );
 
   const run = async (task: () => Promise<void>) => {
     setLoading(true);
@@ -45,10 +59,7 @@ export default function Page() {
     return (
       <div className="shell">
         <main className="hero" style={{ placeItems: "center" }}>
-          <section className="card card-pad">
-            <h1 style={{ marginTop: 0 }}>Loading GlowNotes...</h1>
-            <p className="muted">Preparing the workspace and checking the auth provider.</p>
-          </section>
+          <p className="muted">Loading…</p>
         </main>
       </div>
     );
@@ -59,19 +70,43 @@ export default function Page() {
       <header className="topbar">
         <div className="topbar-inner">
           <div className="brand">
-            <h1>GlowNotes</h1>
-            <p>Cloud-based note-taking app for Project 1</p>
+            <div className="brand-mark">G</div>
+            <div className="brand-text">
+              <strong>GlowNotes</strong>
+              <span>Cloud notes</span>
+            </div>
           </div>
-          <div className="row">
-            <span className="chip">{user ? `${user.displayName} | ${user.provider}` : "Anonymous workspace"}</span>
-            <span className="chip">{store ? "Connected" : "Booting"}</span>
-          </div>
+          {user ? (
+            <div className="user-pill">
+              <div className="avatar">{initials(user.displayName || user.email)}</div>
+              <span>{user.displayName || user.email}</span>
+            </div>
+          ) : (
+            <span className="chip chip-status">Online</span>
+          )}
         </div>
       </header>
 
       <main className="hero">
         {!user ? (
-          <div className="hero-grid">
+          <div className="auth-hero">
+            <div className="auth-headline">
+              <h1>
+                Your notes,<br />
+                <span>anywhere you go.</span>
+              </h1>
+              <p>
+                A fast, private workspace for capturing thoughts, organising ideas,
+                and sharing notes with a single link. Built on Firebase for real-time sync.
+              </p>
+              <ul className="feature-list">
+                <li>Real-time sync across all your devices</li>
+                <li>Markdown editor with live preview</li>
+                <li>Tag, search, and organise effortlessly</li>
+                <li>Share notes with expiring public links</li>
+              </ul>
+            </div>
+
             <AuthPanel
               loading={loading}
               onSignIn={(email, password) =>
@@ -93,44 +128,6 @@ export default function Page() {
                 })
               }
             />
-
-            <section className="card card-pad stack">
-              <div className="stack">
-                <div className="row">
-                  <span className="chip">Architecture</span>
-                  <span className="chip">React + Firebase</span>
-                  <span className="chip">Firestore Rules</span>
-                </div>
-                <h2 style={{ margin: 0, fontSize: "1.45rem" }}>A polished starter for the assignment</h2>
-                <p className="muted" style={{ margin: 0 }}>
-                  This build includes sign-in, note CRUD, search, tags, share toggles, and a markdown preview. If Firebase env vars are missing, it falls back to local storage so you can still use it immediately.
-                </p>
-              </div>
-
-              <div className="meta-grid">
-                <div className="stat">
-                  <strong>{notes.length}</strong>
-                  <span>Notes loaded</span>
-                </div>
-                <div className="stat">
-                  <strong>{notes.filter((note) => note.shared).length}</strong>
-                  <span>Shared notes</span>
-                </div>
-                <div className="stat">
-                  <strong>{query ? "Filtered" : "All"}</strong>
-                  <span>Search mode</span>
-                </div>
-              </div>
-
-              <div className="card card-pad" style={{ background: "rgba(6, 12, 24, 0.72)" }}>
-                <h3 style={{ marginTop: 0 }}>Firebase checklist</h3>
-                <ol style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--muted)", lineHeight: 1.8 }}>
-                  <li>Enable Email/Password and Google sign-in in Firebase Authentication.</li>
-                  <li>Create Firestore in production mode and add the notes collection rules.</li>
-                  <li>Set `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, and `NEXT_PUBLIC_FIREBASE_PROJECT_ID`.</li>
-                </ol>
-              </div>
-            </section>
           </div>
         ) : (
           <div className="hero-grid">
@@ -156,6 +153,13 @@ export default function Page() {
                   }
                 })
               }
+              onSignOut={() =>
+                run(async () => {
+                  if (!store) throw new Error("Store is not ready.");
+                  await store.signOut();
+                })
+              }
+              userEmail={user.email}
             />
 
             <NoteEditor
@@ -174,30 +178,6 @@ export default function Page() {
                 })
               }
             />
-
-            <section className="card card-pad">
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>Session</h3>
-                  <p className="muted" style={{ margin: "0.25rem 0 0" }}>
-                    Signed in as {user.email}
-                  </p>
-                </div>
-                <button
-                  className="button"
-                  type="button"
-                  disabled={loading}
-                  onClick={() =>
-                    run(async () => {
-                      if (!store) throw new Error("Store is not ready.");
-                      await store.signOut();
-                    })
-                  }
-                >
-                  Sign out
-                </button>
-              </div>
-            </section>
           </div>
         )}
       </main>

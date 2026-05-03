@@ -31,26 +31,39 @@ export function AuthPanel({ onSignIn, onSignUp, onGoogleSignIn, loading }: Props
     }
   };
 
+  const handleGoogle = async () => {
+    setError(null);
+    try {
+      await onGoogleSignIn();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+    }
+  };
+
   return (
-    <section className="card card-pad auth-box">
-      <div className="stack">
-        <div className="row">
-          <span className="chip">Firebase Auth</span>
-          <span className="chip">Email + Google</span>
-        </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.35rem" }}>Sign in to your workspace</h2>
-          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-            Use the Firebase-backed flow when credentials are set, or the local demo mode when you just want to explore the app.
-          </p>
-        </div>
-      </div>
+    <section className="card auth-card">
+      <h2 style={{ margin: "0 0 0.4rem", fontSize: "1.4rem", fontWeight: 600, letterSpacing: "-0.01em" }}>
+        {mode === "signin" ? "Welcome back" : "Create your account"}
+      </h2>
+      <p className="muted" style={{ margin: "0 0 1.5rem", fontSize: "0.9rem" }}>
+        {mode === "signin"
+          ? "Sign in to access your notes."
+          : "Start capturing your ideas in seconds."}
+      </p>
 
       <div className="auth-tabs">
-        <button className={`button ${mode === "signin" ? "primary" : "ghost"}`} onClick={() => setMode("signin")} type="button">
+        <button
+          className={mode === "signin" ? "active" : ""}
+          onClick={() => setMode("signin")}
+          type="button"
+        >
           Sign in
         </button>
-        <button className={`button ${mode === "signup" ? "primary" : "ghost"}`} onClick={() => setMode("signup")} type="button">
+        <button
+          className={mode === "signup" ? "active" : ""}
+          onClick={() => setMode("signup")}
+          type="button"
+        >
           Create account
         </button>
       </div>
@@ -62,15 +75,17 @@ export function AuthPanel({ onSignIn, onSignUp, onGoogleSignIn, loading }: Props
             placeholder="Display name"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
+            required
           />
         )}
         <input
           className="input"
-          placeholder="Email"
+          placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
           autoComplete="email"
+          required
         />
         <input
           className="input"
@@ -79,17 +94,21 @@ export function AuthPanel({ onSignIn, onSignUp, onGoogleSignIn, loading }: Props
           onChange={(e) => setPassword(e.target.value)}
           type="password"
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          required
+          minLength={6}
         />
 
-        <div className="grid-2">
-          <button className="button primary" type="submit" disabled={loading}>
-            {loading ? "Working..." : mode === "signin" ? "Enter workspace" : "Create account"}
-          </button>
-          <button className="button" type="button" onClick={onGoogleSignIn} disabled={loading}>
-            Continue with Google
-          </button>
-        </div>
-        {error ? <p style={{ margin: 0, color: "var(--danger)" }}>{error}</p> : null}
+        <button className="button primary" type="submit" disabled={loading} style={{ marginTop: "0.25rem" }}>
+          {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+        </button>
+
+        <div className="divider">OR</div>
+
+        <button className="button" type="button" onClick={handleGoogle} disabled={loading}>
+          Continue with Google
+        </button>
+
+        {error ? <p className="error-text">{error}</p> : null}
       </form>
     </section>
   );

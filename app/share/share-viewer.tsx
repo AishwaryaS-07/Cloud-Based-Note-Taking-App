@@ -64,9 +64,7 @@ export function ShareViewer({ uid, id }: { uid: string; id: string }) {
   if (loading) {
     return (
       <main className="hero" style={{ minHeight: "100vh", placeItems: "center" }}>
-        <section className="card card-pad">
-          <h1 style={{ marginTop: 0 }}>Loading shared note...</h1>
-        </section>
+        <p className="muted">Loading…</p>
       </main>
     );
   }
@@ -74,28 +72,26 @@ export function ShareViewer({ uid, id }: { uid: string; id: string }) {
   if (!note || expired || !note.shared) {
     return (
       <main className="hero" style={{ minHeight: "100vh", placeItems: "center" }}>
-        <section className="card card-pad">
-          <h1 style={{ marginTop: 0 }}>This note is not available</h1>
-          <p className="muted">
-            The note may have expired, been marked private again, or the link could be incomplete.
-          </p>
+        <section className="card empty-state" style={{ maxWidth: 480 }}>
+          <h2>This note isn’t available</h2>
+          <p>The link may have expired or the note is no longer shared.</p>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="hero" style={{ minHeight: "100vh", placeItems: "center" }}>
-      <section className="card card-pad" style={{ width: "min(920px, 100%)" }}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <span className="chip">Shared note</span>
-            <h1 style={{ marginBottom: 0 }}>{note.title}</h1>
-          </div>
-          <span className="chip">{note.tags.join(" | ") || "No tags"}</span>
+    <main className="hero" style={{ minHeight: "100vh", placeItems: "center", paddingBlock: "3rem" }}>
+      <section className="card card-pad" style={{ width: "min(820px, 100%)" }}>
+        <div className="row" style={{ marginBottom: "1rem" }}>
+          <span className="chip chip-shared">Shared note</span>
+          {note.tags.length ? (
+            <span className="chip">{note.tags.join(" · ")}</span>
+          ) : null}
         </div>
-        <article className="stack" style={{ marginTop: "1rem", lineHeight: 1.8 }}>
-          <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "inherit" }}>{note.body}</pre>
+        <h1 style={{ marginTop: 0, marginBottom: "1.25rem", fontSize: "2rem", letterSpacing: "-0.02em" }}>{note.title || "Untitled"}</h1>
+        <article className="preview" style={{ minHeight: 0, border: "none", padding: 0, background: "transparent" }}>
+          <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontFamily: "inherit", lineHeight: 1.75 }}>{note.body}</pre>
         </article>
       </section>
     </main>

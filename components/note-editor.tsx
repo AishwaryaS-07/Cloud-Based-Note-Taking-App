@@ -31,6 +31,7 @@ export function NoteEditor({ note, shareOwnerId, onSave, onToggleShare }: Props)
   const [shared, setShared] = useState(note?.shared ?? false);
   const [expiresAt, setExpiresAt] = useState(note?.shareExpiresAt?.slice(0, 16) ?? "");
   const [status, setStatus] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setTitle(note?.title ?? "");
@@ -39,22 +40,21 @@ export function NoteEditor({ note, shareOwnerId, onSave, onToggleShare }: Props)
     setShared(note?.shared ?? false);
     setExpiresAt(note?.shareExpiresAt?.slice(0, 16) ?? "");
     setStatus(null);
+    setCopied(false);
   }, [note]);
 
   if (!note) {
     return (
-      <section className="card card-pad">
-        <h2 style={{ marginTop: 0 }}>Open a note to edit it</h2>
-        <p className="muted">
-          Select a note from the left panel, or create a new note to start capturing thoughts, meeting notes, and shareable snippets.
-        </p>
+      <section className="card empty-state">
+        <h2>No note selected</h2>
+        <p>Create a new note or pick one from the sidebar to start writing.</p>
       </section>
     );
   }
 
   const shareLink =
-    shared && shareOwnerId
-      ? `/share?uid=${encodeURIComponent(shareOwnerId)}&id=${encodeURIComponent(note.id)}`
+    shared && shareOwnerId && typeof window !== "undefined"
+      ? `${window.location.origin}/share?uid=${encodeURIComponent(shareOwnerId)}&id=${encodeURIComponent(note.id)}`
       : null;
 
   const save = async () => {
@@ -62,7 +62,7 @@ export function NoteEditor({ note, shareOwnerId, onSave, onToggleShare }: Props)
     if (shared && !expiresAt) {
       setExpiresAt(effectiveExpiresAt!.slice(0, 16));
     }
-    setStatus("Saving...");
+    setStatus("Saving…");
     await onSave({
       title,
       body,
@@ -71,7 +71,7 @@ export function NoteEditor({ note, shareOwnerId, onSave, onToggleShare }: Props)
       shareExpiresAt: effectiveExpiresAt
     });
     setStatus("Saved");
-    setTimeout(() => setStatus(null), 1200);
+    setTimeout(() => setStatus(null), 1500);
   };
 
   const shareNow = async (value: boolean) => {
@@ -81,73 +81,101 @@ export function NoteEditor({ note, shareOwnerId, onSave, onToggleShare }: Props)
       setExpiresAt(effectiveExpiresAt!.slice(0, 16));
     }
     await onToggleShare(value, effectiveExpiresAt);
-    setStatus(value ? "Share enabled" : "Share disabled");
-    setTimeout(() => setStatus(null), 1200);
+    setStatus(value ? "Sharing enabled" : "Sharing disabled");
+    setTimeout(() => setStatus(null), 1500);
+  };
+
+  const copyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
   };
 
   return (
-    <section className="card card-pad">
-      <div className="editor-title">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h2 style={{ margin: 0 }}>Editor</h2>
-            <p className="muted" style={{ margin: "0.25rem 0 0" }}>
-              Firestore path: <code>users/&lt;uid&gt;/notes</code>
-            </p>
-          </div>
-          <div className="row">
-            <span className="chip">{shared ? "Public read" : "Private"}</span>
-            <span className="chip">{status ?? "Ready"}</span>
-          </div>
+    <section className="card card-pad editor-card">
+      <div className="editor-header">
+        <input
+          className="input input-lg"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Untitled"
+          style={{ border: "none", background: "transparent", padding: "0.25rem 0", flex: 1, minWidth: "200px" }}
+        />
+        <div className="row">
+          {status ? <span className="editor-status">{status}</span> : null}
+          <button className="button primary sm" type="button" onClick={() => void save()}>
+            Save
+          </button>
         </div>
-
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title" />
       </div>
 
-      <div className="grid-2" style={{ alignItems: "start" }}>
-        <div className="stack">
-          <textarea className="textarea" value={body} onChange={(e) => setBody(e.target.value)} />
-          <input className="input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags, separated, by, commas" />
+      <input
+        className="input"
+        value={tags}
+        onChange={(e) => setTags(e.target.value)}
+        placeholder="Add tags, separated by commas"
+      />
 
-          <div className="card card-pad" style={{ background: "rgba(6, 12, 24, 0.68)" }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <div>
-                <strong>Share link</strong>
-                <p className="muted" style={{ margin: "0.25rem 0 0" }}>
-                  Public access is controlled by the `shared` flag and `shareExpiresAt`.
-                </p>
-              </div>
-              <button className="button" type="button" onClick={() => void shareNow(!shared)}>
-                {shared ? "Disable share" : "Enable share"}
-              </button>
-            </div>
-
-            <input
-              className="input"
-              type="datetime-local"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              style={{ marginTop: "0.75rem" }}
-            />
-
-            <div className="row" style={{ marginTop: "0.75rem", justifyContent: "space-between" }}>
-              <button className="button primary" type="button" onClick={() => void save()}>
-                Save changes
-              </button>
-              {shareLink ? <span className="muted" style={{ fontSize: "0.84rem" }}>{shareLink}</span> : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="card card-pad" style={{ background: "rgba(5, 11, 22, 0.68)" }}>
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: "0.5rem" }}>
-            <strong>Preview</strong>
-            <span className="chip">{note.tags.join(" | ") || "no tags yet"}</span>
-          </div>
-          <article className="stack" style={{ lineHeight: 1.8 }}>
+      <div className="editor-grid">
+        <textarea
+          className="textarea"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Start writing… markdown is supported."
+        />
+        <div className="preview">
+          {body.trim() ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
-          </article>
+          ) : (
+            <span className="preview-empty">Preview will appear here.</span>
+          )}
         </div>
+      </div>
+
+      <div className="share-card">
+        <div className="share-card-head">
+          <div>
+            <strong style={{ fontSize: "0.95rem" }}>Share this note</strong>
+            <p className="muted-soft" style={{ margin: "0.2rem 0 0", fontSize: "0.82rem" }}>
+              {shared ? "Anyone with the link can view this note until it expires." : "Generate a public link with an expiry date."}
+            </p>
+          </div>
+          <button
+            className={shared ? "button sm" : "button primary sm"}
+            type="button"
+            onClick={() => void shareNow(!shared)}
+          >
+            {shared ? "Disable" : "Enable"}
+          </button>
+        </div>
+
+        {shared ? (
+          <>
+            <div className="row" style={{ gap: "0.5rem" }}>
+              <label className="muted-soft" style={{ fontSize: "0.82rem" }}>Expires:</label>
+              <input
+                className="input"
+                type="datetime-local"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                style={{ flex: 1, padding: "0.5rem 0.7rem" }}
+              />
+            </div>
+            {shareLink ? (
+              <div className="row" style={{ gap: "0.5rem", alignItems: "stretch" }}>
+                <span className="share-link" style={{ flex: 1 }}>{shareLink}</span>
+                <button className="button sm" type="button" onClick={() => void copyLink()}>
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </div>
     </section>
   );
