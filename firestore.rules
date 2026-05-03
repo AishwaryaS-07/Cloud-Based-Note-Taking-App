@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /users/{uid}/notes/{noteId} {
+      allow create: if isOwner(uid);
+      allow read: if isOwner(uid) || (resource.data.shared == true && resource.data.shareExpiresAt is timestamp && request.time < resource.data.shareExpiresAt);
+      allow update, delete: if isOwner(uid);
+    }
+  }
+}
